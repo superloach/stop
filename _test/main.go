@@ -8,18 +8,22 @@ import (
 import "github.com/superloach/stop"
 
 func main() {
-	handle := stop.Go(func() int {
-		return <-stop.Go(func() int {
-			fmt.Println("waiting on context")
+	handle := stop.Go(func() string {
+		stop.Yield("(outer) yield before inner")
+
+		stop.Pass(stop.Go(func() string {
+			stop.Yield("(inner) yield before stop")
 
 			<-stop.Context()
-			fmt.Println("context closed")
 
-			stop.Yield[int]() <- 123
-			fmt.Println("yielded")
+			stop.Yield("(inner) yield after stop")
 
-			return 456
-		})
+			return "(inner) return"
+		}))
+
+		stop.Yield("(outer) yield after inner")
+
+		return "(outer) return"
 	})
 
 	go func() {
@@ -30,9 +34,7 @@ func main() {
 		stop.Stop(handle)
 	}()
 
-	fmt.Println("waiting for value from handle")
-	fmt.Println("value from handle:", <-handle)
-
-	fmt.Println("waiting for value from handle")
-	fmt.Println("value from handle:", <-handle)
+	for val := range handle {
+		fmt.Println("value from handle:", val)
+	}
 }

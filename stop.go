@@ -12,9 +12,9 @@ var _ = func() struct{} {
 }
 
 type ctxKey struct {
-	Entry uintptr
+	Entry  uintptr
 	Handle uintptr
-	Data *ctxData
+	Data   *ctxData
 }
 
 type ctxMap map[ctxKey]*ctxData
@@ -22,7 +22,7 @@ type ctxMap map[ctxKey]*ctxData
 var ctxs = ctxMap{}
 
 type ctxData struct {
-	Entry uintptr
+	Entry   uintptr
 	Context chan struct{}
 	Refs    uint64
 	Handle  reflect.Value
@@ -34,12 +34,8 @@ func Go[T any](fn func() T) <-chan T {
 	handle := make(chan T)
 
 	go func() {
-		// get caller of fn, if Go was called from fn
-		pc, _, _, ok := runtime.Caller(4)
-		if !ok {
-			// get this func
-			pc, _, _, _ = runtime.Caller(0)
-		}
+		// get this func
+		pc, _, _, _ := runtime.Caller(0)
 
 		entry := runtime.FuncForPC(pc).Entry()
 
@@ -52,22 +48,22 @@ func Go[T any](fn func() T) <-chan T {
 			}
 		}
 
-			keys := []ctxKey{{
-				Entry: entry,
-			}, {
-				Handle: ctx.Handle.Pointer(),
-			}, {
-				Data: ctx,
-			}}
+		keys := []ctxKey{{
+			Entry: entry,
+		}, {
+			Handle: ctx.Handle.Pointer(),
+		}, {
+			Data: ctx,
+		}}
 
-			for _, k := range keys {
-				ctxs[k] = ctx
-			}
+		for _, k := range keys {
+			ctxs[k] = ctx
+		}
 
 		ctx.Refs++
 
-		val := fn()
-		handle <- val
+		handle <- fn()
+		close(handle)
 
 		ctx.Refs--
 
@@ -81,8 +77,9 @@ func Go[T any](fn func() T) <-chan T {
 	return handle
 }
 
+// Context fetches the context channel for the current goroutine. This channel closes if
 func Context() <-chan struct{} {
-	_, ctx := findEntry(3)
+	_, ctx := findEntry()
 	if ctx == nil {
 		return never
 	}
@@ -90,41 +87,51 @@ func Context() <-chan struct{} {
 	return ctx.Context
 }
 
-func Yield[T any]() chan<- T {
-	_, ctx := findEntry(3)
-
-	yield := make(chan T, 1)
+// Yield sends a value onto the return handle for the current goroutine.
+func Yield[T any](val T) {
+	_, ctx := findEntry()
 
 	if ctx != nil {
 		ctx.Refs++
+		ctx.Handle.Interface().(chan T) <- val
+		ctx.Refs--
 	}
+}
 
-	go func() {
-		val := <-yield
+// Pass works like Yield, except it consumes an entire channel rather than one value.
+func Pass[T any](c <-chan T) {
+	_, ctx := findEntry()
 
-		if ctx != nil {
+	if ctx != nil {
+		for val := range c {
+			ctx.Refs++
 			ctx.Handle.Interface().(chan T) <- val
 			ctx.Refs--
 		}
-
-		close(yield)
-	}()
-
-	return yield
+	}
 }
 
-func findEntry(depth int) (uintptr, *ctxData) {
+func findEntry() (uintptr, *ctxData) {
 	// get caller of fn (from Go)
-	pc, _, _, ok := runtime.Caller(depth)
-	if !ok {
-		return 0, nil
-	}
+	entry := uintptr(0)
+	ctx := (*ctxData)(nil)
 
-	entry := runtime.FuncForPC(pc).Entry()
+	depth := 0
 
-	ctx, ok := ctxs[ctxKey{Entry: entry}]
-	if !ok {
-		return findEntry(depth + 2)
+	for {
+		pc, _, _, ok := runtime.Caller(depth)
+		if !ok {
+			return 0, nil
+		}
+
+		entry := runtime.FuncForPC(pc).Entry()
+
+		ctx, ok = ctxs[ctxKey{Entry: entry}]
+		if ok {
+			break
+		}
+
+		depth++
 	}
 
 	return entry, ctx
@@ -135,6 +142,6 @@ func Stop[T any](h <-chan T) {
 		Handle: reflect.ValueOf(h).Pointer(),
 	}]
 	if ok {
-		ctx.Context <- struct{}{}
+		close(ctx.Context)
 	}
 }
