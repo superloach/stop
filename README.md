@@ -7,9 +7,11 @@ proof-of-concept system for automatically managing a function context in go.
 - [x] remove Handle type
 - [x] add GoNothing
 - [x] gofumpt
-- [ ] automagically pass context down to children
-- [ ] free context after function exit (refcount for children)
-- [ ] look upwards into call stack
+- [x] automagically pass context down to children
+- [x] free context after function exit (refcount for children)
+- [x] look upwards into call stack
+- [x] implement a trimap?
+- [ ] add Yield function which fetches the Handle for the current fn
 - [ ] graceful handling instead of panic
 - [ ] remove debug logs
 - [ ] add warning message to any program that uses this

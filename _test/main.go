@@ -9,10 +9,14 @@ import "github.com/superloach/stop"
 
 func main() {
 	h := stop.Go(func() int {
-		fmt.Println("waiting on context")
-		<-stop.Context()
-		fmt.Println("context ended")
-		return 123
+		i := <-stop.Go(func() int {
+			fmt.Println("waiting on context")
+			<-stop.Context()
+
+			fmt.Println("context closed")
+			return 123
+		})
+		return i
 	})
 
 	go func() {
@@ -20,6 +24,7 @@ func main() {
 		time.Sleep(time.Second * 3)
 		fmt.Println("stopping context")
 		stop.Stop(h)
+
 		fmt.Println("context stopped")
 	}()
 
