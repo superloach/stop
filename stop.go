@@ -1,11 +1,16 @@
 package stop
 
-import "runtime"
-import "reflect"
-import "unsafe"
+import (
+	"reflect"
+	"runtime"
+	"unsafe"
+)
 
-var _handles = map[unsafe.Pointer]uintptr{}
-var _contexts = map[uintptr]chan struct{}{}
+var (
+	_handles  = map[unsafe.Pointer]uintptr{}
+	_contexts = map[uintptr]chan struct{}{}
+	_refs     = map[uintptr]uint64{}
+)
 
 var _never = make(chan struct{})
 
