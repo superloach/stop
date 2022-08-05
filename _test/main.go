@@ -8,30 +8,31 @@ import (
 import "github.com/superloach/stop"
 
 func main() {
-	h := stop.Go(func() int {
-		i := <-stop.Go(func() int {
+	handle := stop.Go(func() int {
+		return <-stop.Go(func() int {
 			fmt.Println("waiting on context")
-			<-stop.Context()
 
+			<-stop.Context()
 			fmt.Println("context closed")
+
 			stop.Yield[int]() <- 123
 			fmt.Println("yielded")
+
 			return 456
 		})
-		return i
 	})
 
 	go func() {
 		fmt.Println("sleeping 3s")
 		time.Sleep(time.Second * 3)
-		fmt.Println("stopping context")
-		stop.Stop(h)
 
-		fmt.Println("context stopped")
+		fmt.Println("stopping handle")
+		stop.Stop(handle)
 	}()
 
-	fmt.Println("waiting on handle")
-	fmt.Println(<-h)
-	fmt.Println("waiting on handle")
-	fmt.Println(<-h)
+	fmt.Println("waiting for value from handle")
+	fmt.Println("value from handle:", <-handle)
+
+	fmt.Println("waiting for value from handle")
+	fmt.Println("value from handle:", <-handle)
 }

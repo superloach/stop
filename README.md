@@ -5,15 +5,15 @@ proof-of-concept system for automatically managing a function context in go.
 ## todo
 - [x] make Never private
 - [x] remove Handle type
-- [x] add GoNothing
+- [ ] ~~add GoNothing~~ decided against!
 - [x] gofumpt
 - [x] automagically pass context down to children
 - [x] free context after function exit (refcount for children)
 - [x] look upwards into call stack
 - [x] implement a trimap?
 - [x] add Yield function which fetches the Handle for the current fn
-- [ ] graceful handling instead of panic
-- [ ] remove debug logs
+- [x] graceful handling instead of panic
+- [x] remove debug logs
 - [ ] add warning message to any program that uses this
 - [ ] add proper tests
 - [ ] integrate with stdlib context?

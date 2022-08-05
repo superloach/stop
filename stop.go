@@ -3,11 +3,9 @@ package stop
 import (
 	"reflect"
 	"runtime"
-	"strconv"
-	"unsafe"
 )
 
-var ctxs = trimap[uintptr, unsafe.Pointer, *ctxData]{}
+var ctxs = trimap[uintptr, uintptr, *ctxData]{}
 
 type ctxData struct {
 	Context chan struct{}
@@ -17,14 +15,7 @@ type ctxData struct {
 
 var never = make(chan struct{})
 
-func GoNothing(fn func()) chan struct{} {
-	return Go(func() struct{} {
-		fn()
-		return struct{}{}
-	})
-}
-
-func Go[T any](fn func() T) chan T {
+func Go[T any](fn func() T) <-chan T {
 	handle := make(chan T)
 
 	go func() {
@@ -32,10 +23,7 @@ func Go[T any](fn func() T) chan T {
 		pc, _, _, ok := runtime.Caller(4)
 		if !ok {
 			// get this func
-			pc, _, _, ok = runtime.Caller(0)
-			if !ok {
-				panic("caller not ok")
-			}
+			pc, _, _, _ = runtime.Caller(0)
 		}
 
 		entry := runtime.FuncForPC(pc).Entry()
@@ -48,26 +36,21 @@ func Go[T any](fn func() T) chan T {
 				Handle:  reflect.ValueOf(handle),
 			}
 
-			trimap[uintptr, unsafe.Pointer, *ctxData](ctxs).Set(
+			trimap[uintptr, uintptr, *ctxData](ctxs).Set(
 				entry,
-				ctx.Handle.UnsafePointer(),
+				ctx.Handle.Pointer(),
 				ctx,
 			)
 		}
 
 		ctx.Refs++
 
-		println("calling fn")
 		val := fn()
-		println("fn returned")
 		handle <- val
-		println("value passed to handle")
 
 		ctx.Refs--
-		println(strconv.Itoa(int(ctx.Refs)) + " refs")
 
 		if ctx.Refs == 0 {
-			println("ctx is getting collected")
 			close(ctx.Context)
 			ctxs.DelV(ctx)
 		}
@@ -87,27 +70,24 @@ func Context() <-chan struct{} {
 
 func Yield[T any]() chan<- T {
 	_, ctx := findEntry(3)
-	if ctx == nil {
-		panic("nil ctx in yield")
-	}
 
 	yield := make(chan T, 1)
-	ctx.Refs++
-	go func() {
-		println("waiting for yield")
 
+	if ctx != nil {
+		ctx.Refs++
+	}
+
+	go func() {
 		val := <-yield
-		println("yield value received")
 
 		if ctx != nil {
 			ctx.Handle.Interface().(chan T) <- val
-			println("passed yield to actual")
 			ctx.Refs--
 		}
 
 		close(yield)
-		println("closed yield")
 	}()
+
 	return yield
 }
 
@@ -115,7 +95,6 @@ func findEntry(depth int) (uintptr, *ctxData) {
 	// get caller of fn (from Go)
 	pc, _, _, ok := runtime.Caller(depth)
 	if !ok {
-		println("caller not ok")
 		return 0, nil
 	}
 
@@ -129,14 +108,11 @@ func findEntry(depth int) (uintptr, *ctxData) {
 	return entry, ctx
 }
 
-func Stop[T any](h chan T) {
-	id := reflect.ValueOf(h).UnsafePointer()
-	println(id)
+func Stop[T any](h <-chan T) {
+	id := reflect.ValueOf(h).Pointer()
 
 	_, ctx, ok := ctxs.GetU(id)
-	if !ok {
-		panic("ctx not ok")
+	if ok {
+		ctx.Context <- struct{}{}
 	}
-
-	ctx.Context <- struct{}{}
 }
