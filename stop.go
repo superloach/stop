@@ -8,11 +8,21 @@ import (
 var _ = func() struct{} {
 	println("warning: this program is using the library github.com/superloach/stop.")
 	println("stop is not stable, and is only intended for educational use.")
+	return struct{}{}
 }
 
-var ctxs = trimap[uintptr, uintptr, *ctxData]{}
+type ctxKey struct {
+	Entry uintptr
+	Handle uintptr
+	Data *ctxData
+}
+
+type ctxMap map[ctxKey]*ctxData
+
+var ctxs = ctxMap{}
 
 type ctxData struct {
+	Entry uintptr
 	Context chan struct{}
 	Refs    uint64
 	Handle  reflect.Value
@@ -33,20 +43,26 @@ func Go[T any](fn func() T) <-chan T {
 
 		entry := runtime.FuncForPC(pc).Entry()
 
-		_, ctx, ok := ctxs.GetT(entry)
+		ctx, ok := ctxs[ctxKey{Entry: entry}]
 		if !ok {
 			ctx = &ctxData{
 				Context: make(chan struct{}),
 				Refs:    0,
 				Handle:  reflect.ValueOf(handle),
 			}
-
-			trimap[uintptr, uintptr, *ctxData](ctxs).Set(
-				entry,
-				ctx.Handle.Pointer(),
-				ctx,
-			)
 		}
+
+			keys := []ctxKey{{
+				Entry: entry,
+			}, {
+				Handle: ctx.Handle.Pointer(),
+			}, {
+				Data: ctx,
+			}}
+
+			for _, k := range keys {
+				ctxs[k] = ctx
+			}
 
 		ctx.Refs++
 
@@ -56,8 +72,9 @@ func Go[T any](fn func() T) <-chan T {
 		ctx.Refs--
 
 		if ctx.Refs == 0 {
-			close(ctx.Context)
-			ctxs.DelV(ctx)
+			for _, k := range keys {
+				delete(ctxs, k)
+			}
 		}
 	}()
 
@@ -105,7 +122,7 @@ func findEntry(depth int) (uintptr, *ctxData) {
 
 	entry := runtime.FuncForPC(pc).Entry()
 
-	_, ctx, ok := ctxs.GetT(entry)
+	ctx, ok := ctxs[ctxKey{Entry: entry}]
 	if !ok {
 		return findEntry(depth + 2)
 	}
@@ -114,9 +131,9 @@ func findEntry(depth int) (uintptr, *ctxData) {
 }
 
 func Stop[T any](h <-chan T) {
-	id := reflect.ValueOf(h).Pointer()
-
-	_, ctx, ok := ctxs.GetU(id)
+	ctx, ok := ctxs[ctxKey{
+		Handle: reflect.ValueOf(h).Pointer(),
+	}]
 	if ok {
 		ctx.Context <- struct{}{}
 	}

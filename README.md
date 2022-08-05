@@ -15,6 +15,7 @@ proof-of-concept system for automatically managing a function context in go.
 - [x] graceful handling instead of panic
 - [x] remove debug logs
 - [x] add warning message to any program that uses this
+- [x] replace trimap with a non-generic implementation
 - [ ] add proper tests
 - [ ] integrate with stdlib context?
 - [ ] add docs
