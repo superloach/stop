@@ -2,7 +2,7 @@
 
 proof-of-concept system for automatically managing a function context in go.
 
-todo:
+## todo
 - [x] make Never private
 - [x] remove Handle type
 - [x] add GoNothing
@@ -16,3 +16,6 @@ todo:
 - [ ] add proper tests
 - [ ] integrate with stdlib context?
 - [ ] add docs
+
+## license
+this software is provided without warranty, primarily for educational purposes. you are free to use this code for any purpose, although it is not recommended in any critical use cases.
