@@ -7,12 +7,17 @@ import "unsafe"
 var _handles = map[unsafe.Pointer]uintptr{}
 var _contexts = map[uintptr]chan struct{}{}
 
-type Handle[T any] chan T
+var _never = make(chan struct{})
 
-var Never = make(chan struct{})
+func GoNothing(fn func()) chan struct{} {
+	return Go(func() struct{} {
+		fn()
+		return struct{}{}
+	})
+}
 
-func Go[T any](fn func() T) Handle[T] {
-	handle := make(Handle[T])
+func Go[T any](fn func() T) chan T {
+	handle := make(chan T)
 
 	go func() {
 		pc, _, _, ok := runtime.Caller(0)
@@ -43,13 +48,13 @@ func Context() <-chan struct{} {
 	ctx, ok := _contexts[entry]
 	if !ok {
 		println("never")
-		return Never
+		return _never
 	}
 
 	return ctx
 }
 
-func Stop[T any](h Handle[T]) {
+func Stop[T any](h chan T) {
 	id := reflect.ValueOf(h).UnsafePointer()
 
 	entry, ok := _handles[id]

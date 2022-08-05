@@ -15,7 +15,7 @@ func main() {
 
 	go func() {
 		fmt.Println("sleeping 3s")
-		time.Sleep(time.Second*3)
+		time.Sleep(time.Second * 3)
 		fmt.Println("stopping context")
 		stop.Stop(h)
 		fmt.Println("context stopped")
