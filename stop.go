@@ -5,6 +5,11 @@ import (
 	"runtime"
 )
 
+var _ = func() struct{} {
+	println("warning: this program is using the library github.com/superloach/stop.")
+	println("stop is not stable, and is only intended for educational use.")
+}
+
 var ctxs = trimap[uintptr, uintptr, *ctxData]{}
 
 type ctxData struct {

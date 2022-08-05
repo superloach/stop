@@ -14,7 +14,7 @@ proof-of-concept system for automatically managing a function context in go.
 - [x] add Yield function which fetches the Handle for the current fn
 - [x] graceful handling instead of panic
 - [x] remove debug logs
-- [ ] add warning message to any program that uses this
+- [x] add warning message to any program that uses this
 - [ ] add proper tests
 - [ ] integrate with stdlib context?
 - [ ] add docs
