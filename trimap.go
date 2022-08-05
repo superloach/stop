@@ -1,6 +1,6 @@
 package stop
 
-type triEntry[T, U, V any] struct{
+type triEntry[T, U, V any] struct {
 	T T
 	U U
 	V V
@@ -51,4 +51,3 @@ func (m trimap[T, U, V]) GetV(v V) (T, U, bool) {
 	entry, ok := m[triEntry[T, U, V]{V: v}]
 	return entry.T, entry.U, ok
 }
-

@@ -14,7 +14,9 @@ func main() {
 			<-stop.Context()
 
 			fmt.Println("context closed")
-			return 123
+			stop.Yield[int]() <- 123
+			fmt.Println("yielded")
+			return 456
 		})
 		return i
 	})
@@ -28,6 +30,8 @@ func main() {
 		fmt.Println("context stopped")
 	}()
 
+	fmt.Println("waiting on handle")
+	fmt.Println(<-h)
 	fmt.Println("waiting on handle")
 	fmt.Println(<-h)
 }
